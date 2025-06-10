@@ -4,39 +4,45 @@ import json
 import time
 
 # --- Page Config ---
-st.set_page_config(page_title="Chatbot", page_icon="💬")
+st.set_page_config(page_title="OpenRouter Chatbot", page_icon="💬")
 
 # --- CSS for Chat Bubbles ---
 st.markdown("""
-    <style>
-    .chat-bubble {
-        max-width: 80%;
-        padding: 0.8em 1.2em;
-        margin: 0.5em 0;
-        color: #141311;
-        border-radius: 1em;
-        line-height: 1.5;
-        font-size: 1.05em;
-        word-wrap: break-word;
-    }
-    .user-bubble {
-        background-color: #DCF8C6;
-        align-self: flex-end;
-        margin-left: auto;
-    }
-    .assistant-bubble {
-        background-color: #F1F0F0;
-        color: #0a0801;
-        align-self: flex-start;
-        margin-right: auto;
-    }
-    .chat-container {
-        display: flex;
-        border: 2px;
-        border-radius: 5px;
-        flex-direction: column;
-    }
-    </style>
+        <style>
+.chat-container {
+    display: flex;
+    flex-direction: column;
+    border-radius: 8px;
+    padding: 1em;
+}
+
+.chat-bubble {
+    max-width: 80%;
+    padding: 0.8em 1.2em;
+    margin: 0.5em 0;
+    font-size: 1.05em;
+    line-height: 1.5;
+    color: #141311;
+    background-color: #f9f9f9;
+    border-radius: 1em;
+    word-wrap: break-word;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.user-bubble {
+    background-color: #DCF8C6;
+    align-self: flex-end;
+    margin-left: auto;
+}
+
+.assistant-bubble {
+    background-color: #F1F0F0;
+    color: #0a0801;
+    align-self: flex-start;
+    margin-right: auto;
+}
+</style>
+
 """, unsafe_allow_html=True)
 
 # --- Function to validate API key ---
@@ -66,7 +72,7 @@ if not st.session_state.api_key_valid:
     with st.form("api_key_form"):
         user_key = st.text_input("🔐 Enter your OpenRouter API Key", type="password")
         submitted = st.form_submit_button("Submit")
-        st.write("Talk with models from OpenRouter: https://openrouter.ai")
+        st.write("Get free API key from OpenRouter: https://openrouter.ai")
         if submitted:
             if user_key.strip():
                 if validate_api_key(user_key.strip()):
@@ -85,8 +91,7 @@ if not st.session_state.api_key_valid:
     st.stop()
 
 # --- Main Chat UI ---
-st.title("💬 OpenRouter Chatbot")
-st.write("Talk with models from OpenRouter: https://openrouter.ai")
+st.title("💬 Chatbot")
 
 # --- Model Selection ---
 model_options = {
@@ -143,7 +148,7 @@ if prompt := st.chat_input("Type your message..."):
             response = requests.post("https://openrouter.ai/api/v1/chat/completions", headers=headers, json=payload)
             response.raise_for_status()
             assistant_reply = response.json()["choices"][0]["message"]["content"]
-            
+
             # Typing animation
             bubble_placeholder = st.empty()
             displayed_text = ""
