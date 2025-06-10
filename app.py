@@ -1,15 +1,94 @@
 import streamlit as st
 import requests
 import json
-# Load API key from secrets
-api_key = st.secrets["OPENROUTER_API_KEY"]
-# Title and description
-st.title("💬 Chatbot via OpenRouter")
-st.write(
-    "This chatbot uses OpenRouter"
-    "You can get a free API key from openrouter.ai."
-)
-# Model selector
+import time
+
+# --- Page Config ---
+st.set_page_config(page_title="Chatbot", page_icon="💬")
+
+# --- CSS for Chat Bubbles ---
+st.markdown("""
+    <style>
+    .chat-bubble {
+        max-width: 80%;
+        padding: 0.8em 1.2em;
+        margin: 0.5em 0;
+        color: #141311;
+        border-radius: 1em;
+        line-height: 1.5;
+        font-size: 1.05em;
+        word-wrap: break-word;
+    }
+    .user-bubble {
+        background-color: #DCF8C6;
+        align-self: flex-end;
+        margin-left: auto;
+    }
+    .assistant-bubble {
+        background-color: #F1F0F0;
+        color: #0a0801;
+        align-self: flex-start;
+        margin-right: auto;
+    }
+    .chat-container {
+        display: flex;
+        border: 2px;
+        border-radius: 5px;
+        flex-direction: column;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
+# --- Function to validate API key ---
+def validate_api_key(api_key):
+    try:
+        headers = {
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json"
+        }
+        payload = {
+            "model": "mistralai/mixtral-8x7b-instruct",
+            "messages": [{"role": "user", "content": "Hello"}]
+        }
+        response = requests.post("https://openrouter.ai/api/v1/chat/completions", headers=headers, json=payload)
+        return response.ok
+    except:
+        return False
+
+# --- API Key Handling ---
+if "api_key" not in st.session_state:
+    st.session_state.api_key = ""
+if "api_key_valid" not in st.session_state:
+    st.session_state.api_key_valid = False
+
+# --- Ask for API Key ---
+if not st.session_state.api_key_valid:
+    with st.form("api_key_form"):
+        user_key = st.text_input("🔐 Enter your OpenRouter API Key", type="password")
+        submitted = st.form_submit_button("Submit")
+        st.write("Talk with models from OpenRouter: https://openrouter.ai")
+        if submitted:
+            if user_key.strip():
+                if validate_api_key(user_key.strip()):
+                    st.session_state.api_key = user_key.strip()
+                    st.session_state.api_key_valid = True
+                    st.success("✅ API Key is valid. You can now start chatting!")
+                    st.rerun()
+                else:
+                    st.error("❌ Invalid API Key. Please try again.")
+            else:
+                st.error("API Key cannot be empty.")
+
+# --- Stop if no valid API key ---
+if not st.session_state.api_key_valid:
+    st.warning("Please enter a valid API key to continue.")
+    st.stop()
+
+# --- Main Chat UI ---
+st.title("💬 OpenRouter Chatbot")
+st.write("Talk with models from OpenRouter: https://openrouter.ai")
+
+# --- Model Selection ---
 model_options = {
     "Mixtral 8x7B Instruct": "mistralai/mixtral-8x7b-instruct",
     "Claude 3 Haiku": "anthropic/claude-3-haiku",
@@ -19,53 +98,63 @@ model_options = {
 }
 selected_model_name = st.selectbox("Choose a model", list(model_options.keys()))
 selected_model = model_options[selected_model_name]
-# Temperature slider
-# temperature = st.slider("Response creativity (temperature)", 0.0, 1.5, 0.7, 0.1)
-# System prompt input
-system_prompt = st.text_area("System prompt (optional)", placeholder="You are a helpful assistant.")
-# Initialize session state
+
+# --- Messages State ---
 if "messages" not in st.session_state:
     st.session_state.messages = []
-    if system_prompt:
-        st.session_state.messages.append({"role": "system", "content": system_prompt})
-# Buttons for export and reset
+
+# --- Clear & Export Buttons ---
 col1, col2 = st.columns(2)
 with col1:
     if st.button("🗑️ Clear Chat"):
         st.session_state.clear()
-        st.success("Chat history cleared. Please refresh the page to start over.")
+        st.success("Chat cleared. Refresh to start again.")
         st.stop()
-
 with col2:
     if st.download_button("💾 Export Chat", data=json.dumps(st.session_state.messages, indent=2),
                           file_name="chat_history.json", mime="application/json"):
         st.success("Chat exported!")
-# Display chat history
-for message in st.session_state.messages:
-    with st.chat_message(message["role"]):
-        st.markdown(message["content"], unsafe_allow_html=True)
-# Chat input
-if prompt := st.chat_input("Say something..."):
+
+# --- Display Chat Bubbles ---
+st.markdown('<div class="chat-container">', unsafe_allow_html=True)
+for msg in st.session_state.messages:
+    role_class = "user-bubble" if msg["role"] == "user" else "assistant-bubble"
+    st.markdown(f'<div class="chat-bubble {role_class}">{msg["content"]}</div>', unsafe_allow_html=True)
+st.markdown('</div>', unsafe_allow_html=True)
+
+# --- Chat Input ---
+if prompt := st.chat_input("Type your message..."):
     st.session_state.messages.append({"role": "user", "content": prompt})
-    with st.chat_message("user"):
-        st.markdown(prompt)
-    try:
-        # Prepare the request payload
+
+    # Show user bubble
+    st.markdown(f'<div class="chat-bubble user-bubble">{prompt}</div>', unsafe_allow_html=True)
+
+    with st.spinner("Assistant is typing..."):
         headers = {
-            "Authorization": f"Bearer {api_key}",
+            "Authorization": f"Bearer {st.session_state.api_key}",
             "Content-Type": "application/json"
         }
         payload = {
             "model": selected_model,
             "messages": st.session_state.messages,
-            # "temperature": temperature
         }
-        # Send request to OpenRouter
-        response = requests.post("https://openrouter.ai/api/v1/chat/completions", headers=headers, json=payload)
-        response.raise_for_status()
-        assistant_reply = response.json()["choices"][0]["message"]["content"]
-        with st.chat_message("assistant"):
-            st.markdown(assistant_reply, unsafe_allow_html=True)
-        st.session_state.messages.append({"role": "assistant", "content": assistant_reply})
-    except Exception as e:
-        st.error(f"An error occurred: {e}")
+
+        try:
+            response = requests.post("https://openrouter.ai/api/v1/chat/completions", headers=headers, json=payload)
+            response.raise_for_status()
+            assistant_reply = response.json()["choices"][0]["message"]["content"]
+            
+            # Typing animation
+            bubble_placeholder = st.empty()
+            displayed_text = ""
+            for char in assistant_reply:
+                displayed_text += char
+                bubble_placeholder.markdown(
+                    f'<div class="chat-bubble assistant-bubble">{displayed_text}</div>', unsafe_allow_html=True
+                )
+                time.sleep(0.013)
+
+            st.session_state.messages.append({"role": "assistant", "content": assistant_reply})
+
+        except Exception as e:
+            st.error(f"An error occurred: {e}")
