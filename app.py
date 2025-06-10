@@ -20,7 +20,7 @@ model_options = {
 selected_model_name = st.selectbox("Choose a model", list(model_options.keys()))
 selected_model = model_options[selected_model_name]
 # Temperature slider
-temperature = st.slider("Response creativity (temperature)", 0.0, 1.5, 0.7, 0.1)
+# temperature = st.slider("Response creativity (temperature)", 0.0, 1.5, 0.7, 0.1)
 # System prompt input
 system_prompt = st.text_area("System prompt (optional)", placeholder="You are a helpful assistant.")
 # Initialize session state
@@ -58,7 +58,7 @@ if prompt := st.chat_input("Say something..."):
         payload = {
             "model": selected_model,
             "messages": st.session_state.messages,
-            "temperature": temperature
+            # "temperature": temperature
         }
         # Send request to OpenRouter
         response = requests.post("https://openrouter.ai/api/v1/chat/completions", headers=headers, json=payload)
