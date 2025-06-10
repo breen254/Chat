@@ -32,8 +32,10 @@ if "messages" not in st.session_state:
 col1, col2 = st.columns(2)
 with col1:
     if st.button("🗑️ Clear Chat"):
-        st.session_state.messages = []
-        st.experimental_rerun()
+        st.session_state.clear()
+        st.success("Chat history cleared. Please refresh the page to start over.")
+        st.stop()
+
 with col2:
     if st.download_button("💾 Export Chat", data=json.dumps(st.session_state.messages, indent=2),
                           file_name="chat_history.json", mime="application/json"):
